@@ -1,0 +1,66 @@
+---
+//import { SEO } from "../components/SEO.astro";
+
+import Navbar from "../components/navbar.astro";
+import Footer from "../components/footer.astro";
+
+// Import des globalen Tailwind-Stylesheets
+import '../styles/global.css'; 
+
+export interface Props {
+  title: string;
+  active?: string; // `active` ist optional, da nicht jede Seite es braucht
+}
+
+// Stelle sicher, dass Astro.site und Astro.url verfügbar sind (Standard in Astro)
+const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
+const resolvedImageWithDomain = new URL(
+  "/opengraph.jpg",
+  Astro.site
+).toString();
+
+const { title, active } = Astro.props; // `active` hier dekonstruieren
+
+// Ändere dies, um nur den übergebenen Titel zu verwenden oder deine eigene Logik
+const makeTitle = title
+  ? title // Wenn ein Titel übergeben wurde, nimm diesen
+  : "Lost and Found Web - Deine Webseite für Verlorenes und Gefundenes"; // Sonst den Standard
+
+const theme = "light";
+---
+
+<!DOCTYPE html>
+<html lang="de" data-theme={theme}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    
+    <title>{makeTitle}</title>
+
+    </head>
+  <body class="h-full">
+  <div class="w-full flex flex-col min-h-screen">
+      
+      <Navbar active={active}/> 
+      
+      <div class="mx-auto max-w-screen-lg px-4 flex flex-col flex-grow"></div>
+
+      <main class="flex-grow">
+        <slot />
+      </main>
+      
+      <Footer />
+      
+      <style is:global>
+      /* Improve Page speed */
+      /* https://css-tricks.com/almanac/properties/c/content-visibility/ */
+      img {
+        content-visibility: auto;
+      }
+      </style>
+    </div>
+  </div>
+</body>
+</html>

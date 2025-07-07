@@ -1,0 +1,50 @@
+---
+// src/components/Footer.astro
+const today = new Date();
+---
+
+<footer class="mt-auto w-full pt-10 pb-4">
+  <div class="border-t border-slate-200">
+    <div class="mx-auto max-w-screen-lg px-4 pt-8">
+      <div class="grid grid-cols-1 gap-8 md:grid-cols-3">
+        
+        <!-- Sektion: Hauptnavigation -->
+        <div>
+          <h3 class="text-lg font-semibold text-slate-800">Navigation</h3>
+          <ul class="mt-4 space-y-2">
+            <li><a href="/" class="text-slate-600 hover:text-blue-600 hover:underline">Startseite</a></li>
+            <li><a href="/objekte" class="text-slate-600 hover:text-blue-600 hover:underline">Objekte suchen</a></li>
+            <li><a href="/melden" class="text-slate-600 hover:text-blue-600 hover:underline">Etwas melden</a></li>
+            <li><a href="/kontakt" class="text-slate-600 hover:text-blue-600 hover:underline">Kontakt</a></li>
+          </ul>
+        </div>
+
+        <!-- Sektion: Rechtliches -->
+        <div>
+          <h3 class="text-lg font-semibold text-slate-800">Rechtliches</h3>
+          <ul class="mt-4 space-y-2">
+            <li><a href="/impressum" class="text-slate-600 hover:text-blue-600 hover:underline">Impressum</a></li>
+            <li><a href="/datenschutz" class="text-slate-600 hover:text-blue-600 hover:underline">Datenschutzerklärung</a></li>
+          </ul>
+        </div>
+
+        <!-- Sektion: Über das Projekt -->
+        <div>
+          <h3 class="text-lg font-semibold text-slate-800">Lost and Found Web</h3>
+          <p class="mt-4 text-slate-600">
+            Unsere Plattform hilft Ihnen, verlorene Gegenstände wiederzufinden oder Finder zu kontaktieren.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Copyright-Zeile am Ende -->
+      <div class="mt-10 border-t border-slate-200 pt-6">
+        <p class="text-center text-sm text-slate-500">
+          Copyright © {today.getFullYear()} Lost and Found Web. Alle Rechte vorbehalten.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</footer>

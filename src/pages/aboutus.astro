@@ -1,0 +1,84 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=search" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=mood" />
+
+<Layout title="Was ist Lost and Found?">
+    <div class="container mx-auto px-4 py-8">
+
+        <main class="text-center py-16">
+            <h1 class="text-6xl font-bold mb-4">Was ist <span class="text-primary">Lost and Found</span>?</h1>
+            <p class="text-2xl text-base-content/70 mb-12">Euer digitales Fundbüro an der Uni!</p>
+
+            <div class="max-w-4xl mx-auto text-lg text-base-content leading-relaxed space-y-6">
+                <p>
+                    Kennst du das? Du hetzt durch den Unialltag, von der Vorlesung zur Mensa, und plötzlich
+                    fällst du aus allen Wolken: Dein Schlüssel fehlt. Die Sporttasche ist weg. Oder die Jacke?
+                    Nervig, oder? Genau dafür gibt es jetzt CampusFind - dein digitales Fundbüro, das den Uni-
+                    Alltag ein kleines bisschen entspannter macht.
+                </p>
+                <p>
+                    CampusFind ist deine zentrale Anlaufstelle, wenn auf dem Campus etwas
+                    abhandengekommen ist oder jemand anderes etwas wieder gefunden hat, was du
+                    zurückgeben möchtest. Schluss mit Zettelwirtschaft am Schwarzen Brett oder der Suche in
+                    zig verschiedenen Büros!
+                </p>
+            </div>
+        </main>
+
+        <section class="py-20">
+            <h2 class="text-3xl font-bold text-slate-900 mb-8">So einfach funktioniert CampusFind:</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div class="card bg-base-100 shadow-xl p-8 items-center text-center">
+                    <div class="text-7xl text-primary mb-6">⁇</div>
+                    <div class="card-body p-0">
+                        <h3 class="card-title justify-center text-2xl mb-2">Verloren oder gefunden?</h3>
+                        <p class="text-base-content/80">
+                            erstelle in wenigen Schritten einen Eintrag, damit andere sehen, dass du etwas verloren/gefunden hast
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card bg-base-100 shadow-xl p-8 items-center text-center">
+                    <div class="text-7xl text-primary mb-6">
+                        <span class="material-symbols-outlined">
+                            search
+                        </span>
+                    </div>
+                    <div class="card-body p-0">
+                        <h3 class="card-title justify-center text-2xl mb-2">Schnell finden durch Filter</h3>
+                        <p class="text-base-content/80">
+                            Filter, wie Datum oder Ort, helfen dir dabei, das, was du Verlorenes noch schneller finden kannst
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card bg-base-100 shadow-xl p-8 items-center text-center">
+                    <div class="text-7xl text-primary mb-6">
+                        <span class="material-symbols-outlined">
+                            mood
+                        </span>
+                    </div>
+                    <div class="card-body p-0">
+                        <h3 class="card-title justify-center text-2xl mb-2">Zurück zum Besitzer</h3>
+                        <p class="text-base-content/80">
+                            Verlorenes gelangt ganz einfach und unkompliziert zu seinem Besitzer
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center py-16 text-base-content/80">
+            <p class="mb-4 font-semibold">
+                Weniger Stress, mehr Happy End!
+            </p>
+            <p class="max-w-3xl mx-auto">
+                Wir wissen, wie ärgerlich es sein kann, etwas zu verlieren. Deshalb ist es unser Ziel, dir mit CampusFind
+                eine Plattform zu bieten, die den Suchprozess nicht nur einfacher, sondern auch stressfreier macht. So
+                wird unser Campus nicht nur digitaler, sondern auch noch hilfsbereiter und entspannter.
+            </p>
+        </footer>
+    </div>
+</Layout>

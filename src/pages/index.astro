@@ -1,0 +1,23 @@
+---
+// Importiere DEIN Layout, das in src/layouts/Layout.astro gespeichert ist
+import Layout from "../layouts/Layout.astro";
+import ItemCard from '../components/itemCard.astro';
+---
+
+<Layout title="Willkommen beim Lost and Found Web" active="home">
+    <div class="mx-auto max-w-screen-lg px-4">
+        <h1 class="text-5xl font-extrabold text-blue-800 my-5 text-center">Willkommen beim Lost and Found Web!</h1>
+        <p class="text-xl py-5 text-center">
+            Hier finden Sie verlorene Gegenstände und können gefundene Gegenstände melden.
+            Unsere Plattform hilft Ihnen, Vermisstes wiederzufinden oder einen Finder zu kontaktieren.
+        </p>
+        <div class="text-center mt-8">
+            <a href="/items" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-4">
+                Objekte suchen
+            </a>
+            <a href="/melden" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                Etwas melden
+            </a>
+        </div>
+    </div>
+</Layout>
