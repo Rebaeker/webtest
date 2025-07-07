@@ -1,7 +1,7 @@
 import sqlite from 'better-sqlite3';
 import * as path from 'path';
 
-const dbPath = path.resolve("./", "database.db");
+const dbPath = path.resolve("./src/database", "database.db");
 console.log(dbPath);
 
 // Die Datei muss ausgeführt werden, um die Datenbank zu initialisieren 
@@ -53,6 +53,24 @@ function initDb() {
     'updatedAt' INT NOT NULL DEFAULT 0)`);
   console.log(resultCategory);
 
+  const defaultCategories = ['Schlüssel', 'Elektronik', 'Kleidung', 'Dokumente', 'Schmuck', 'Sonstiges'];
+  defaultCategories.forEach((cat) => {
+    db.prepare(`
+      INSERT OR IGNORE INTO Categories (id, name, createdAt, updatedAt)
+      VALUES (lower(hex(randomblob(16))), ?, strftime('%s','now'), strftime('%s','now'))
+    `).run(cat);
+  });
+
+  // ----------------------- Dummy-User anlegen -----------------------
+  // Damit die Fremdschlüssel-Prüfung bei Items nicht fehlschlägt
+  // (userId = 'dummy-user-id-123')
+  // ------------------------------------------------------------
+  db.prepare(`
+    INSERT OR IGNORE INTO Users (id, prename, surname, username, password, phone, email, createdAt, updatedAt)
+    VALUES ('dummy-user-id-123', 'Demo', 'User', 'demo', 'password', '', 'demo@example.com',
+            strftime('%s','now'), strftime('%s','now'))
+  `).run();
+
 //  Hier wird ie Neue Column password hinzugefügt. 
    // let addPerson = db.exec("ALTER TABLE Persons ADD COLUMN password TEXT NOT NULL DEFAULT ''");
    // console.log(addPerson);
@@ -69,10 +87,15 @@ function initDb() {
     'id' TEXT NOT NULL PRIMARY KEY,
     'name' TEXT NOT NULL,
     'createdAt' INTEGER NOT NULL DEFAULT 0,
-    'updatedAt' INTEGER NOT NULL DEFAULT 0
-  );
-`);
-console.log("Locations Table Result:", resultLocations);
+    'updatedAt' INTEGER NOT NULL DEFAULT 0)`);
+  console.log("Locations Table Result:", resultLocations);
+  const defaultLocations = ['Bibliothek', 'Mensa', 'Hauptgebäude', 'Sportzentrum', 'Parkplatz', 'Sonstiges'];
+  defaultLocations.forEach((loc) => {
+    db.prepare(`
+      INSERT OR IGNORE INTO Locations (id, name, createdAt, updatedAt)
+      VALUES (lower(hex(randomblob(16))), ?, strftime('%s','now'), strftime('%s','now'))
+    `).run(loc);
+  });
 
 // --- ITEMS ---
 let resultItems = db.exec(`

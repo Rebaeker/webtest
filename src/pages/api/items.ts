@@ -7,7 +7,7 @@ import dayjs from 'dayjs';
 
 // Wichtig: Der dbPath muss dem Pfad in deiner initdb.js entsprechen!
 // Da deine initdb.js die Datei im Projekt-Root ablegt, muss dieser Pfad korrekt sein.
-const dbPath = path.resolve("./database.db"); // Angepasst an deinen initdb.js Pfad
+const dbPath = path.resolve("./src/database/database.db"); // Angepasst an deinen initdb.js Pfad
 
 export const GET: APIRoute = async () => {
   let db = new sqlite(dbPath);

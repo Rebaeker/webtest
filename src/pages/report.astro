@@ -7,7 +7,7 @@ import * as path from 'path';
 
 // Der Pfad zur Datenbankdatei. Stellen Sie sicher, dass dies korrekt ist.
 // Wenn Ihre database.db im Ordner 'database' liegt, sollte der Pfad so aussehen:
-const dbPath = path.resolve("./database/database.db"); 
+const dbPath = path.resolve("./src/database/database.db"); 
 // Wenn database.db direkt im Projekt-Root liegt, dann: const dbPath = path.resolve("./database.db");
 
 // Variablen für Kategorien und Standorte initialisieren
@@ -48,6 +48,7 @@ const script = `
         for (const [key, value] of formData.entries()) {
           itemData[key] = value;
         }
+        itemData.title = itemData.name;
 
         // Konvertiere die Datumseingabe in einen Unix-Timestamp (Sekunden seit 1970)
         if (itemData.date) {
@@ -69,6 +70,10 @@ const script = `
         // Entferne die temporären Felder 'category' und 'location', da wir categoryId und locationId verwenden
         delete itemData.category;
         delete itemData.location;
+
+        // Bild-Upload: falls Datei ausgewählt, nur Dateiname übernehmen, sonst null
+        const imgFile = formData.get('img');
+        itemData.img = (imgFile && imgFile.name) ? imgFile.name : null;
 
         console.log('Sende Daten:', itemData);
 
@@ -154,7 +159,14 @@ const script = `
       <!-- Date Lost/Found -->
       <div>
         <label for="date" class="block text-gray-700 text-lg font-semibold mb-2">Datum verloren/gefunden</label>
-        <input type="date" id="date" name="date" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-base">
+        <!-- Durch onclick wird beim Klick auf irgendeine Stelle im Feld sofort der Date-Picker geöffnet -->
+        <input
+          type="date"
+          id="date"
+          name="date"
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-base cursor-pointer"
+          onclick="this.showPicker()"
+        >
       </div>
 
       <!-- Description -->
@@ -163,10 +175,10 @@ const script = `
         <textarea id="description" name="description" rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-base" placeholder="Geben Sie Details wie Farbe, Marke, besondere Merkmale usw. an."></textarea>
       </div>
 
-      <!-- Image URL -->
+      <!-- Image-Upload -->
       <div>
-        <label for="img" class="block text-gray-700 text-lg font-semibold mb-2">Bild</label>
-        <input type="url" id="img" name="img" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-base" placeholder="z.B. https://example.com/image.jpg">
+        <label for="img" class="block text-gray-700 text-lg font-semibold mb-2">Bild hochladen</label>
+        <input type="file" id="img" name="img" accept="image/*" class="w-full text-base" />
       </div>
 
       <!-- Message Area for Feedback -->
@@ -181,5 +193,7 @@ const script = `
     </form>
   </div>
 
-  <script is:inline set:html={script} />
+  <script is:inline>
+    {script}
+  </script>
 </Layout>
