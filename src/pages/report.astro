@@ -28,91 +28,14 @@ try {
   // Hier könnten Sie auch eine Fallback-Nachricht oder leere Optionen anzeigen
   // oder den Fehler auf der Seite sichtbar machen.
 }
-
-// Client-seitiges Skript für die Formularverarbeitung
-// Dieses Skript wird im Browser ausgeführt
-const script = `
-  document.addEventListener('DOMContentLoaded', () => {
-    const reportForm = document.getElementById('reportForm');
-    const messageDiv = document.getElementById('message');
-
-    if (reportForm) {
-      reportForm.addEventListener('submit', async (event) => {
-        event.preventDefault(); // Verhindert das Standard-Formular-Submit
-
-        messageDiv.textContent = ''; // Alte Nachrichten löschen
-        messageDiv.className = 'p-3 rounded-md text-center'; // Reset classes
-
-        const formData = new FormData(reportForm);
-        const itemData = {};
-        for (const [key, value] of formData.entries()) {
-          itemData[key] = value;
-        }
-        itemData.title = itemData.name;
-
-        // Konvertiere die Datumseingabe in einen Unix-Timestamp (Sekunden seit 1970)
-        if (itemData.date) {
-            itemData.date = new Date(itemData.date).getTime() / 1000;
-        } else {
-            itemData.date = null; // Wenn kein Datum eingegeben wurde
-        }
-        itemData.reportedAt = Math.floor(Date.now() / 1000); // Aktueller Unix-Timestamp
-
-        // Die tatsächlichen IDs aus den Dropdowns verwenden
-        // itemData.category und itemData.location enthalten jetzt die ID-Werte der ausgewählten Optionen
-        itemData.categoryId = itemData.category; 
-        itemData.locationId = itemData.location; 
-        
-        // Dummy-Wert für userId, da dieser aus der Authentifizierung kommen müsste
-        // In einer echten Anwendung würden Sie hier die ID des eingeloggten Benutzers verwenden.
-        itemData.userId = 'dummy-user-id-123'; 
-
-        // Entferne die temporären Felder 'category' und 'location', da wir categoryId und locationId verwenden
-        delete itemData.category;
-        delete itemData.location;
-
-        // Bild-Upload: falls Datei ausgewählt, nur Dateiname übernehmen, sonst null
-        const imgFile = formData.get('img');
-        itemData.img = (imgFile && imgFile.name) ? imgFile.name : null;
-
-        console.log('Sende Daten:', itemData);
-
-        try {
-          // Annahme: Ihre POST-API-Route ist unter /api/items erreichbar
-          const response = await fetch('/api/items', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(itemData),
-          });
-
-          const result = await response.json();
-
-          if (response.ok && result.success === 'ok') {
-            messageDiv.textContent = 'Gegenstand erfolgreich gemeldet!';
-            messageDiv.classList.add('bg-green-100', 'text-green-800');
-            reportForm.reset(); // Formular zurücksetzen
-          } else {
-            messageDiv.textContent = 'Fehler beim Melden des Gegenstands: ' + (result.message || 'Unbekannter Fehler');
-            messageDiv.classList.add('bg-red-100', 'text-red-800');
-          }
-        } catch (error) {
-          console.error('Fetch-Fehler:', error);
-          messageDiv.textContent = 'Netzwerkfehler oder Server nicht erreichbar.';
-          messageDiv.classList.add('bg-red-100', 'text-red-800');
-        }
-      });
-    }
-  });
-`;
 ---
 
 <Layout title="Gegenstand melden" active="report">
   <div class="mx-auto max-w-screen-lg px-4">
     <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Melden Sie einen verlorenen oder gefundenen Gegenstand.</h1>
 
-    <form id="reportForm" class="space-y-6">
+    <!-- WICHTIG: action="#" und method="post" hinzugefügt, um Standard-Submission zu verhindern -->
+    <form id="reportForm" class="space-y-6" action="#" method="post">
       <!-- Is the item lost or found? -->
       <div>
         <label class="block text-gray-700 text-lg font-semibold mb-2">Ist der Gegenstand verloren oder gefunden? <span class="text-red-500">*</span></label>
@@ -178,11 +101,25 @@ const script = `
       <!-- Image-Upload -->
       <div>
         <label for="img" class="block text-gray-700 text-lg font-semibold mb-2">Bild hochladen</label>
-        <input type="file" id="img" name="img" accept="image/*" class="w-full text-base" />
+        <div class="space-y-4">
+          <input 
+            type="file" 
+            id="img" 
+            name="img" 
+            accept="image/*" 
+            class="w-full text-base file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
+          />
+          
+          <!-- Image Preview -->
+          <div id="imagePreview" class="hidden">
+            <img id="previewImg" src="" alt="Vorschau" class="max-w-xs max-h-48 rounded-lg shadow-md">
+            <button type="button" id="removeImage" class="mt-2 text-red-600 hover:text-red-800 text-sm">Bild entfernen</button>
+          </div>
+        </div>
       </div>
 
       <!-- Message Area for Feedback -->
-      <div id="message" class="hidden"></div>
+      <div id="message" class="p-3 rounded-md text-center hidden"></div>
 
       <!-- Submit Button -->
       <div class="text-center">
@@ -193,7 +130,116 @@ const script = `
     </form>
   </div>
 
-  <script is:inline>
-    {script}
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const reportForm = document.getElementById('reportForm');
+    const messageDiv = document.getElementById('message');
+    const imgInput = document.getElementById('img');
+    const imagePreview = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+    const removeImageBtn = document.getElementById('removeImage');
+
+    // Image preview functionality
+    imgInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        // Check file size (limit to 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Datei ist zu groß. Maximale Größe: 5MB');
+          imgInput.value = '';
+          return;
+        }
+
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+          alert('Bitte wählen Sie eine gültige Bilddatei.');
+          imgInput.value = '';
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          previewImg.src = e.target.result;
+          imagePreview.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      } else {
+        imagePreview.classList.add('hidden');
+      }
+    });
+
+    // Remove image functionality
+    removeImageBtn.addEventListener('click', function() {
+      imgInput.value = '';
+      imagePreview.classList.add('hidden');
+    });
+
+    if (reportForm) {
+      reportForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        messageDiv.textContent = '';
+        messageDiv.className = 'p-3 rounded-md text-center';
+        messageDiv.classList.remove('hidden');
+        messageDiv.textContent = 'Übertrage Daten...';
+        messageDiv.classList.add('bg-blue-100', 'text-blue-800');
+
+        // Use FormData to handle file uploads
+        const formData = new FormData(reportForm);
+
+        // Convert form data to object for validation
+        const itemData = {};
+        for (const [key, value] of formData.entries()) {
+          if (key !== 'img') { // Handle image separately
+            itemData[key] = value;
+          }
+        }
+
+        // Add computed fields
+        itemData.title = itemData.name;
+        
+        if (itemData.date) {
+          itemData.date = new Date(itemData.date).getTime() / 1000;
+        } else {
+          itemData.date = null;
+        }
+        itemData.reportedAt = Math.floor(Date.now() / 1000);
+        itemData.categoryId = itemData.category; 
+        itemData.locationId = itemData.location; 
+        itemData.userId = 'dummy-user-id-123';
+
+        // Clean up form data object
+        delete itemData.category;
+        delete itemData.location;
+
+        console.log('Sende Daten:', itemData);
+
+        try {
+          const response = await fetch('/api/items', {
+            method: 'POST',
+            body: formData, // Send FormData directly for file upload
+          });
+
+          console.log('Response status:', response.status);
+          const result = await response.json();
+          console.log('Response result:', result);
+
+          if (response.ok && result.success === 'ok') {
+            messageDiv.textContent = 'Gegenstand erfolgreich gemeldet!';
+            messageDiv.className = 'p-3 rounded-md text-center bg-green-100 text-green-800';
+            reportForm.reset();
+            imagePreview.classList.add('hidden');
+          } else {
+            messageDiv.textContent = 'Fehler beim Melden des Gegenstands: ' + (result.message || 'Unbekannter Fehler');
+            messageDiv.className = 'p-3 rounded-md text-center bg-red-100 text-red-800';
+          }
+        } catch (error) {
+          console.error('Fetch-Fehler:', error);
+          messageDiv.textContent = 'Netzwerkfehler oder Server nicht erreichbar.';
+          messageDiv.className = 'p-3 rounded-md text-center bg-red-100 text-red-800';
+        }
+      });
+    }
+  });
   </script>
 </Layout>

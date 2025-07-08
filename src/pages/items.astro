@@ -1,10 +1,507 @@
 ---
+// filepath: /Users/timehmann/Dokumente/Programmieren/SmallProjects/webtest/src/pages/items.astro
 import Layout from "../layouts/Layout.astro";
+import sqlite from 'better-sqlite3';
+import * as path from 'path';
+
+// Der Pfad zur Datenbankdatei
+const dbPath = path.resolve("./src/database/database.db"); 
+
+// Variablen für Kategorien und Standorte initialisieren
+let categories = [];
+let locations = [];
+
+// Datenbankabfrage für Kategorien und Standorte
+try {
+  const db = new sqlite(dbPath, { readonly: true });
+  categories = db.prepare('SELECT id, name FROM categories ORDER BY name ASC').all();
+  locations = db.prepare('SELECT id, name FROM locations ORDER BY name ASC').all();
+  db.close();
+} catch (error) {
+  console.error("Fehler beim Laden der Kategorien oder Standorte aus der Datenbank:", error);
+}
 ---
 
 <Layout title="Objekte suchen - Lost and Found Web" active="objekte">
-    <div class="mx-auto max-w-screen-lg px-4">
-        <h1>Verlorene Objekte suchen</h1>
-        <p>Hier können Sie nach verlorenen Gegenständen suchen.</p>
+  <!-- Main Content Container -->
+  <div id="mainContent" class="mx-auto max-w-screen-xl px-4 py-8">
+    <!-- Page Title -->
+    <h1 class="text-4xl font-bold text-gray-800 mb-8 text-center">Verlorene und gefundene Gegenstände</h1>
+    
+    <!-- Filter Section -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <!-- Search Input -->
+        <div class="lg:col-span-1">
+          <label for="search" class="block text-sm font-medium text-gray-700 mb-2">Suche</label>
+          <input 
+            type="text" 
+            id="search" 
+            name="search" 
+            placeholder="Nach Gegenstand suchen..."
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          >
+        </div>
+
+        <!-- Category Dropdown -->
+        <div class="lg:col-span-1">
+          <label for="categoryFilter" class="block text-sm font-medium text-gray-700 mb-2">Kategorie</label>
+          <select 
+            id="categoryFilter" 
+            name="categoryFilter" 
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Alle Kategorien</option>
+            {categories.map(category => (
+              <option value={category.id}>{category.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <!-- Location Dropdown -->
+        <div class="lg:col-span-1">
+          <label for="locationFilter" class="block text-sm font-medium text-gray-700 mb-2">Ort</label>
+          <select 
+            id="locationFilter" 
+            name="locationFilter" 
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Alle Orte</option>
+            {locations.map(location => (
+              <option value={location.id}>{location.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <!-- Date Input -->
+        <div class="lg:col-span-1">
+          <label for="dateFilter" class="block text-sm font-medium text-gray-700 mb-2">Datum</label>
+          <input 
+            type="date" 
+            id="dateFilter" 
+            name="dateFilter" 
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          >
+        </div>
+
+        <!-- Type Switch -->
+        <div class="lg:col-span-1">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Typ</label>
+          <div class="flex items-center space-x-4">
+            <label class="inline-flex items-center">
+              <input type="radio" name="typeFilter" value="" class="form-radio text-blue-600" checked>
+              <span class="ml-2 text-sm">Alle</span>
+            </label>
+            <label class="inline-flex items-center">
+              <input type="radio" name="typeFilter" value="isLost" class="form-radio text-blue-600">
+              <span class="ml-2 text-sm">Verloren</span>
+            </label>
+            <label class="inline-flex items-center">
+              <input type="radio" name="typeFilter" value="isFound" class="form-radio text-blue-600">
+              <span class="ml-2 text-sm">Gefunden</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Button -->
+      <div class="mt-4 text-center">
+        <button 
+          id="applyFilters" 
+          class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300"
+        >
+          Filter anwenden
+        </button>
+        <button 
+          id="clearFilters" 
+          class="ml-4 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300"
+        >
+          Filter zurücksetzen
+        </button>
+      </div>
     </div>
+
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" class="text-center py-8 hidden">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <p class="mt-2 text-gray-600">Lade Gegenstände...</p>
+    </div>
+
+    <!-- Items Grid - Updated grid for wider cards -->
+    <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <!-- Items will be loaded here dynamically -->
+    </div>
+
+    <!-- No Results Message -->
+    <div id="noResults" class="text-center py-12 hidden">
+      <div class="text-gray-500 text-lg">Keine Gegenstände gefunden.</div>
+      <p class="text-gray-400 mt-2">Versuchen Sie andere Suchkriterien.</p>
+    </div>
+  </div>
+
+  <!-- Modal for Item Detail View - Fixed backdrop blur -->
+  <div id="itemModal" class="fixed inset-0 z-50 hidden">
+    <!-- Backdrop with blur effect -->
+    <div class="absolute inset-0 backdrop-blur-sm bg-transparent"></div>
+    
+    <!-- Modal content -->
+    <div class="relative flex items-center justify-center min-h-screen p-4">
+      <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-90vh overflow-y-auto">
+        <div class="p-6">
+          <!-- Modal Header -->
+          <div class="flex justify-between items-start mb-6">
+            <h2 id="modalTitle" class="text-2xl font-bold text-gray-800"></h2>
+            <button id="closeModal" class="text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none">
+              ×
+            </button>
+          </div>
+
+          <!-- Modal Content -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Image Section -->
+            <div class="space-y-4">
+              <div class="w-full h-80 bg-gray-100 rounded-lg overflow-hidden">
+                <img id="modalImage" src="" alt="" class="w-full h-full object-contain rounded-lg shadow-md">
+              </div>
+              
+              <!-- Item Details -->
+              <div class="space-y-2">
+                <div class="flex items-center space-x-2">
+                  <span id="modalType" class="px-3 py-1 rounded-full text-sm font-medium"></span>
+                </div>
+                <div class="text-sm text-gray-600">
+                  <strong>Kategorie:</strong> <span id="modalCategory"></span>
+                </div>
+                <div class="text-sm text-gray-600">
+                  <strong>Ort:</strong> <span id="modalLocation"></span>
+                </div>
+                <div class="text-sm text-gray-600">
+                  <strong>Datum:</strong> <span id="modalDate"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Details Section -->
+            <div class="space-y-4">
+              <!-- Description -->
+              <div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Beschreibung</h3>
+                <p id="modalDescription" class="text-gray-600 leading-relaxed"></p>
+              </div>
+
+              <!-- Contact Info -->
+              <div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Kontakt</h3>
+                <p class="text-gray-600">Gemeldet von: <span id="modalReporter" class="font-medium"></span></p>
+                <p class="text-gray-600">Gemeldet am: <span id="modalReportedAt" class="font-medium"></span></p>
+              </div>
+
+              <!-- Contact Form -->
+              <div class="border-t pt-4">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">Nachricht senden</h3>
+                <div class="space-y-3">
+                  <textarea 
+                    id="contactMessage" 
+                    rows="4" 
+                    placeholder="Ihre Nachricht an den Eigentümer..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  ></textarea>
+                  <button 
+                    id="sendMessage" 
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+                  >
+                    Nachricht senden
+                  </button>
+                  <p class="text-xs text-gray-500">Diese Funktion ist derzeit noch nicht verfügbar.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      let allItems = [];
+      let categories = {};
+      let locations = {};
+
+      // DOM Elements
+      const itemsGrid = document.getElementById('itemsGrid');
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      const noResults = document.getElementById('noResults');
+      const itemModal = document.getElementById('itemModal');
+      const closeModal = document.getElementById('closeModal');
+      const mainContent = document.getElementById('mainContent');
+
+      // Filter elements
+      const searchInput = document.getElementById('search');
+      const categoryFilter = document.getElementById('categoryFilter');
+      const locationFilter = document.getElementById('locationFilter');
+      const dateFilter = document.getElementById('dateFilter');
+      const typeFilters = document.querySelectorAll('input[name="typeFilter"]');
+      const applyFiltersBtn = document.getElementById('applyFilters');
+      const clearFiltersBtn = document.getElementById('clearFilters');
+
+      // Load initial data
+      loadItems();
+      loadCategories();
+      loadLocations();
+
+      // Event listeners
+      applyFiltersBtn.addEventListener('click', applyFilters);
+      clearFiltersBtn.addEventListener('click', clearFilters);
+      closeModal.addEventListener('click', closeItemModal);
+      itemModal.addEventListener('click', (e) => {
+        if (e.target === itemModal) closeItemModal();
+      });
+
+      // Send message button (placeholder)
+      document.getElementById('sendMessage').addEventListener('click', () => {
+        alert('Diese Funktion ist noch nicht implementiert.');
+      });
+
+      async function loadItems() {
+        showLoading(true);
+        try {
+          const response = await fetch('/api/items');
+          const result = await response.json();
+          
+          if (result.success === 'ok') {
+            allItems = result.items;
+            // Wait for categories and locations to load before displaying items
+            await Promise.all([loadCategories(), loadLocations()]);
+            displayItems(allItems);
+          } else {
+            console.error('Error loading items:', result.message);
+            showNoResults();
+          }
+        } catch (error) {
+          console.error('Fetch error:', error);
+          showNoResults();
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      async function loadCategories() {
+        try {
+          const response = await fetch('/api/categorydb');
+          const result = await response.json();
+          
+          if (result.success === 'ok') {
+            result.categories.forEach(cat => {
+              categories[cat.id] = cat.name;
+            });
+          }
+        } catch (error) {
+          console.error('Error loading categories:', error);
+        }
+      }
+
+      async function loadLocations() {
+        try {
+          const response = await fetch('/api/locations');
+          const result = await response.json();
+          
+          if (result.success === 'ok') {
+            result.locations.forEach(loc => {
+              locations[loc.id] = loc.name;
+            });
+          }
+        } catch (error) {
+          console.error('Error loading locations:', error);
+        }
+      }
+
+      function displayItems(items) {
+        if (items.length === 0) {
+          showNoResults();
+          return;
+        }
+
+        itemsGrid.innerHTML = items.map(item => createItemCard(item)).join('');
+        noResults.classList.add('hidden');
+        itemsGrid.classList.remove('hidden');
+
+        // Add click listeners to all "Item anschauen" buttons
+        document.querySelectorAll('.view-item-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const itemId = e.target.dataset.itemId;
+            const item = allItems.find(i => i.id === itemId);
+            if (item) showItemModal(item);
+          });
+        });
+      }
+
+      function createItemCard(item) {
+        const categoryName = categories[item.categoryId] || 'Unbekannt';
+        const locationName = locations[item.locationId] || 'Unbekannt';
+        const date = item.date ? new Date(item.date * 1000).toLocaleDateString('de-DE') : 'Unbekannt';
+        const typeLabel = item.type === 'isLost' ? 'Verloren' : 'Gefunden';
+        const typeBadgeClass = item.type === 'isLost' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
+        
+        // Updated image path handling
+        const imageSrc = item.img ? item.img : '/uploads/placeholder.jpg';
+
+        return `
+          <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition duration-300">
+            <!-- Image Section with aspect ratio container -->
+            <div class="h-48 bg-gray-100 overflow-hidden">
+              <img src="${imageSrc}" alt="${item.title}" class="w-full h-full object-contain" onerror="this.src='/uploads/placeholder.jpg'">
+            </div>
+            
+            <!-- Content Section -->
+            <div class="p-4">
+              <!-- Type Badge -->
+              <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${typeBadgeClass} mb-2">
+                ${typeLabel}
+              </span>
+              
+              <!-- Title -->
+              <h3 class="text-lg font-semibold text-gray-800 mb-2 line-clamp-2">${item.title}</h3>
+              
+              <!-- Details -->
+              <div class="space-y-1 text-sm text-gray-600 mb-4">
+                <p><strong>Kategorie:</strong> ${categoryName}</p>
+                <p><strong>Ort:</strong> ${locationName}</p>
+                <p><strong>Datum:</strong> ${date}</p>
+              </div>
+              
+              <!-- View Button -->
+              <button 
+                class="view-item-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-300"
+                data-item-id="${item.id}"
+              >
+                Item anschauen
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      function showItemModal(item) {
+        const categoryName = categories[item.categoryId] || 'Unbekannt';
+        const locationName = locations[item.locationId] || 'Unbekannt';
+        const date = item.date ? new Date(item.date * 1000).toLocaleDateString('de-DE') : 'Unbekannt';
+        const reportedAt = new Date(item.reportedAt * 1000).toLocaleDateString('de-DE');
+        const typeLabel = item.type === 'isLost' ? 'Verloren' : 'Gefunden';
+        const typeBadgeClass = item.type === 'isLost' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
+        
+        // Updated image path handling
+        const imageSrc = item.img ? item.img : '/uploads/placeholder.jpg';
+
+        // Fill modal content
+        document.getElementById('modalTitle').textContent = item.title;
+        document.getElementById('modalImage').src = imageSrc;
+        document.getElementById('modalImage').alt = item.title;
+        
+        const modalType = document.getElementById('modalType');
+        modalType.textContent = typeLabel;
+        modalType.className = `px-3 py-1 rounded-full text-sm font-medium ${typeBadgeClass}`;
+        
+        document.getElementById('modalCategory').textContent = categoryName;
+        document.getElementById('modalLocation').textContent = locationName;
+        document.getElementById('modalDate').textContent = date;
+        document.getElementById('modalDescription').textContent = item.description || 'Keine Beschreibung verfügbar.';
+        document.getElementById('modalReporter').textContent = item.userId || 'Unbekannt';
+        document.getElementById('modalReportedAt').textContent = reportedAt;
+        
+        // Clear contact message
+        document.getElementById('contactMessage').value = '';
+
+        // Show modal with blur effect
+        itemModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeItemModal() {
+        itemModal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+      }
+
+      function applyFilters() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const selectedCategory = categoryFilter.value;
+        const selectedLocation = locationFilter.value;
+        const selectedDate = dateFilter.value;
+        const selectedType = document.querySelector('input[name="typeFilter"]:checked').value;
+
+        const filteredItems = allItems.filter(item => {
+          // Search filter
+          if (searchTerm && !item.title.toLowerCase().includes(searchTerm) && 
+              !item.name.toLowerCase().includes(searchTerm) &&
+              !(item.description && item.description.toLowerCase().includes(searchTerm))) {
+            return false;
+          }
+
+          // Category filter
+          if (selectedCategory && item.categoryId !== selectedCategory) {
+            return false;
+          }
+
+          // Location filter
+          if (selectedLocation && item.locationId !== selectedLocation) {
+            return false;
+          }
+
+          // Date filter
+          if (selectedDate && item.date) {
+            const itemDate = new Date(item.date * 1000).toISOString().split('T')[0];
+            if (itemDate !== selectedDate) {
+              return false;
+            }
+          }
+
+          // Type filter
+          if (selectedType && item.type !== selectedType) {
+            return false;
+          }
+
+          return true;
+        });
+
+        displayItems(filteredItems);
+      }
+
+      function clearFilters() {
+        searchInput.value = '';
+        categoryFilter.value = '';
+        locationFilter.value = '';
+        dateFilter.value = '';
+        document.querySelector('input[name="typeFilter"][value=""]').checked = true;
+        displayItems(allItems);
+      }
+
+      function showLoading(show) {
+        if (show) {
+          loadingIndicator.classList.remove('hidden');
+          itemsGrid.classList.add('hidden');
+          noResults.classList.add('hidden');
+        } else {
+          loadingIndicator.classList.add('hidden');
+        }
+      }
+
+      function showNoResults() {
+        itemsGrid.classList.add('hidden');
+        noResults.classList.remove('hidden');
+      }
+    });
+  </script>
+
+  <style>
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .max-h-90vh {
+      max-height: 90vh;
+    }
+  </style>
 </Layout>
