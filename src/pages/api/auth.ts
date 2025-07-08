@@ -3,10 +3,16 @@ import sqlite from 'better-sqlite3';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import dayjs from 'dayjs';
+import { createHash, hash } from 'crypto';
 
 export const prerender = false;
 
 const dbPath = path.resolve("./src/database/database.db");
+
+// Function to hash password
+function hashPassword(password: string): string {
+  return createHash('sha256').update(password).digest('hex');
+}
 
 // Login endpoint
 export const POST: APIRoute = async ({ request }) => {
@@ -16,9 +22,11 @@ export const POST: APIRoute = async ({ request }) => {
     const db = new sqlite(dbPath);
     
     if (action === 'login') {
+     
+      const hashedPassword = hashPassword(password);
       // Login logic
       const user = db.prepare('SELECT id, prename, surname, email FROM Users WHERE email = ? AND password = ?')
-                    .get(email, password);
+                    .get(email, hashedPassword);
       
       if (user) {
         db.close();
@@ -59,6 +67,9 @@ export const POST: APIRoute = async ({ request }) => {
           headers: { 'Content-Type': 'application/json' }
         });
       }
+
+      // Hash the password
+      const hashedPassword = hashPassword(password);
       
       // Create new user
       const id = uuidv4();
@@ -67,7 +78,7 @@ export const POST: APIRoute = async ({ request }) => {
       const result = db.prepare(`
         INSERT INTO Users (id, prename, surname, username, password, phone, email, createdAt, updatedAt) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(id, prename, surname, email, password, phone, email, now, now);
+      `).run(id, prename, surname, email, hashedPassword, phone, email, now, now);
       
       const newUser = {
         id: id,

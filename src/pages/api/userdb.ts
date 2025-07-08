@@ -5,10 +5,16 @@ import sqlite from 'better-sqlite3';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import dayjs from 'dayjs';
+import { createHash } from 'crypto';
 
 
 const dbPath = path.resolve('./src/database/', 'database.db');
 console.log(dbPath);
+
+// Function to hash password
+function hashPassword(password: string): string {
+  return createHash('sha256').update(password).digest('hex');
+}
 
 /**
  * GET /api/userdb
@@ -23,7 +29,6 @@ export const GET: APIRoute = async ({ request }) => {
 
   try {
     if (id) {
-      // Erweiterung des Blueprints: einen einzelnen Datensatz abrufen
       const user = db
         .prepare(
           'SELECT id, prename, surname, username, phone, email FROM Users WHERE id = ?'
@@ -99,6 +104,8 @@ export const POST: APIRoute = async ({ request }) => {
     const id = uuidv4(); // sicherer Primärschlüssel
     const now = dayjs().unix();
 
+    const hashedPassword = hashPassword(user.password);
+
     const db = new sqlite(dbPath);
     const added = db
       .prepare(
@@ -109,7 +116,7 @@ export const POST: APIRoute = async ({ request }) => {
         user.prename,
         user.surname,
         user.username,
-        user.password,
+        hashedPassword,
         user.phone,
         user.email,
         now,
@@ -156,6 +163,8 @@ export const PUT: APIRoute = async ({ request }) => {
     const now = dayjs().unix();
     const db = new sqlite(dbPath);
 
+    const hashedPassword = hashPassword(user.password);
+
     const updated = db
       .prepare(
         'UPDATE Users SET prename = ?, surname = ?, username = ?, password = ?, phone = ?, email = ?, updatedAt = ? WHERE id = ?'
@@ -164,7 +173,7 @@ export const PUT: APIRoute = async ({ request }) => {
         user.prename,
         user.surname,
         user.username,
-        user.password,
+        hashedPassword,
         user.phone,
         user.email,
         now,

@@ -33,7 +33,7 @@ function getUserFromCookie(request: Request) {
 
 export const GET: APIRoute = async () => {
   let db = new sqlite(dbPath);
-  let itemsFromDb = await db.prepare('SELECT id, name, img, type, title, date, reportedAt, categoryId, description, locationId, userId FROM Items').all();
+  let itemsFromDb = await db.prepare('SELECT id, name, img, type, title, date, reportedAt, categoryId, description, locationId, userId FROM Items ORDER BY rowid DESC').all();
   db.close();
   return new Response(JSON.stringify(
       {
