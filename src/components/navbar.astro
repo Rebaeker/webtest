@@ -75,7 +75,6 @@
         const user = localStorage.getItem('user');
         if (!user) {
           e.preventDefault();
-          alert('Sie müssen sich anmelden, um Gegenstände zu melden.');
           window.location.href = '/login/';
         }
       });

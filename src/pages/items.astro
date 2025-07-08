@@ -328,11 +328,19 @@ try {
 
         // Add click listeners to all "Item anschauen" buttons
         document.querySelectorAll('.view-item-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', (e) => {
+            // Check authentication before showing modal
+            const user = localStorage.getItem('user');
+            if (!user) {
+                // User is not logged in, redirect to login page
+                window.location.href = '/login/';
+                return;
+            }
+            
             const itemId = e.target.dataset.itemId;
             const item = allItems.find(i => i.id === itemId);
             if (item) showItemModal(item);
-          });
+            });
         });
       }
 
