@@ -9,7 +9,6 @@
         Lost and Found
       </a>
   
-  
       <!-- Burger-Menü für Mobil -->
       <input id="nav-toggle" type="checkbox" class="peer hidden" />
       <label for="nav-toggle" class="cursor-pointer md:hidden">
@@ -25,17 +24,110 @@
         <!-- Navigation rechts -->
         <ul class="flex flex-col md:flex-row md:gap-6 md:items-center md:ml-auto">
           <li><a href="/items/" class="text-xl text-gray-700 hover:text-blue-600">Items</a></li>
-          <li><a href="/report/" class="text-xl text-gray-700 hover:text-blue-600">Report</a></li>
+          <li><a href="/report/" class="text-xl text-gray-700 hover:text-blue-600" id="reportLink">Report</a></li>
           <li><a href="/aboutus/" class="text-xl text-gray-700 hover:text-blue-600">About Us</a></li>
         </ul>
   
-        <!-- Login-Button ganz rechts -->
-        <a href="/login/"
-           class="text-xl border border-blue-600 text-blue-600 rounded px-4 py-2 hover:bg-blue-600 hover:text-white transition md:ml-6">
-          Login
-        </a>
+        <!-- User Info / Login Button -->
+        <div id="authSection" class="md:ml-6">
+          <!-- Login Button (shown when not logged in) -->
+          <a href="/login/" id="loginButton"
+            class="text-xl border border-blue-600 text-blue-600 rounded px-4 py-2 hover:bg-blue-600 hover:text-white transition">
+            Login
+          </a>
+          
+          <!-- User Info (shown when logged in) -->
+          <div id="userInfo" class="hidden flex items-center space-x-4">
+            <span id="userEmail" class="text-gray-700"></span>
+            <button id="logoutButton" 
+                    class="text-xl border border-red-600 text-red-600 rounded px-4 py-2 hover:bg-red-600 hover:text-white transition">
+              Logout
+            </button>
+          </div>
+        </div>
       </div>
-  
     </div>
   </nav>
-  
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    checkAuthStatus();
+    
+    // Logout functionality
+    const logoutButton = document.getElementById('logoutButton');
+    if (logoutButton) {
+      logoutButton.addEventListener('click', async () => {
+        try {
+          await fetch('/api/auth', { method: 'DELETE' });
+          localStorage.removeItem('user');
+          updateAuthUI(null);
+          window.location.href = '/';
+        } catch (error) {
+          console.error('Logout error:', error);
+        }
+      });
+    }
+
+    // Check if user is trying to access report page without login
+    const reportLink = document.getElementById('reportLink');
+    if (reportLink) {
+      reportLink.addEventListener('click', (e) => {
+        const user = localStorage.getItem('user');
+        if (!user) {
+          e.preventDefault();
+          alert('Sie müssen sich anmelden, um Gegenstände zu melden.');
+          window.location.href = '/login/';
+        }
+      });
+    }
+  });
+
+  async function checkAuthStatus() {
+    try {
+      // Check localStorage first for immediate UI update
+      const localUser = localStorage.getItem('user');
+      if (localUser) {
+        const user = JSON.parse(localUser);
+        updateAuthUI(user);
+      }
+
+      // Then verify with server
+      const response = await fetch('/api/auth');
+      const result = await response.json();
+      
+      if (result.success === 'ok' && result.isAuthenticated) {
+        localStorage.setItem('user', JSON.stringify(result.user));
+        updateAuthUI(result.user);
+      } else {
+        localStorage.removeItem('user');
+        updateAuthUI(null);
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      updateAuthUI(null);
+    }
+  }
+
+  function updateAuthUI(user) {
+    const loginButton = document.getElementById('loginButton');
+    const userInfo = document.getElementById('userInfo');
+    const userEmail = document.getElementById('userEmail');
+
+    if (user) {
+      // User is logged in
+      loginButton.classList.add('hidden');
+      userInfo.classList.remove('hidden');
+      userInfo.classList.add('flex');
+      userEmail.textContent = user.email;
+    } else {
+      // User is not logged in
+      loginButton.classList.remove('hidden');
+      userInfo.classList.add('hidden');
+      userInfo.classList.remove('flex');
+    }
+  }
+
+  // Make functions globally available
+  window.checkAuthStatus = checkAuthStatus;
+  window.updateAuthUI = updateAuthUI;
+</script>

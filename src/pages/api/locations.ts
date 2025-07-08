@@ -1,4 +1,3 @@
-// src/pages/api/locations.ts
 import type { APIRoute } from 'astro';
 import sqlite from 'better-sqlite3';
 import * as path from 'path';
@@ -7,11 +6,12 @@ import dayjs from 'dayjs';
 
 // Wichtig: Der dbPath muss dem Pfad in deiner initdb.js entsprechen!
 // Da deine initdb.js die Datei im Projekt-Root ablegt, muss dieser Pfad korrekt sein.
-const dbPath = path.resolve("./database.db"); // Angepasst an deinen initdb.js Pfad
+const dbPath = path.resolve("./src/database/", 'database.db'); // Angepasst an deinen initdb.js Pfad
 
 export const GET: APIRoute = async () => {
   let db = new sqlite(dbPath);
   let locationsFromDb = await db.prepare('SELECT id, name FROM Locations').all();
+  console.log("locationsFromDb", locationsFromDb);
   db.close();
   return new Response(JSON.stringify(
       {

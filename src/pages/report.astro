@@ -31,8 +31,27 @@ try {
 ---
 
 <Layout title="Gegenstand melden" active="report">
-  <div class="mx-auto max-w-screen-lg px-4">
+  <!-- Login Required Message -->
+  <div id="loginRequired" class="mx-auto max-w-screen-lg px-4 py-8 text-center hidden">
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+      <h2 class="text-2xl font-bold text-yellow-800 mb-4">Anmeldung erforderlich</h2>
+      <p class="text-yellow-700 mb-4">Sie müssen sich anmelden, um Gegenstände zu melden.</p>
+      <a href="/login/" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+        Zur Anmeldung
+      </a>
+    </div>
+  </div>
+
+  <!-- Report Form (only shown when logged in) -->
+  <div id="reportSection" class="mx-auto max-w-screen-lg px-4 hidden">
     <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Melden Sie einen verlorenen oder gefundenen Gegenstand.</h1>
+    
+    <!-- User Info Display -->
+    <div id="userDisplay" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+      <p class="text-blue-800">
+        <strong>Gemeldet von:</strong> <span id="currentUserEmail"></span>
+      </p>
+    </div>
 
     <!-- WICHTIG: action="#" und method="post" hinzugefügt, um Standard-Submission zu verhindern -->
     <form id="reportForm" class="space-y-6" action="#" method="post">
@@ -131,115 +150,113 @@ try {
   </div>
 
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const reportForm = document.getElementById('reportForm');
-    const messageDiv = document.getElementById('message');
-    const imgInput = document.getElementById('img');
-    const imagePreview = document.getElementById('imagePreview');
-    const previewImg = document.getElementById('previewImg');
-    const removeImageBtn = document.getElementById('removeImage');
+    document.addEventListener('DOMContentLoaded', () => {
+      checkLoginStatus();
+      
+      const reportForm = document.getElementById('reportForm');
+      const messageDiv = document.getElementById('message');
+      const imgInput = document.getElementById('img');
+      const imagePreview = document.getElementById('imagePreview');
+      const previewImg = document.getElementById('previewImg');
+      const removeImageBtn = document.getElementById('removeImage');
 
-    // Image preview functionality
-    imgInput.addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (file) {
-        // Check file size (limit to 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          alert('Datei ist zu groß. Maximale Größe: 5MB');
-          imgInput.value = '';
-          return;
+      // Image preview functionality
+      imgInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          if (file.size > 5 * 1024 * 1024) {
+            alert('Datei ist zu groß. Maximale Größe: 5MB');
+            imgInput.value = '';
+            return;
+          }
+
+          if (!file.type.startsWith('image/')) {
+            alert('Bitte wählen Sie eine gültige Bilddatei.');
+            imgInput.value = '';
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            imagePreview.classList.remove('hidden');
+          };
+          reader.readAsDataURL(file);
+        } else {
+          imagePreview.classList.add('hidden');
         }
+      });
 
-        // Check file type
-        if (!file.type.startsWith('image/')) {
-          alert('Bitte wählen Sie eine gültige Bilddatei.');
-          imgInput.value = '';
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          previewImg.src = e.target.result;
-          imagePreview.classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-      } else {
+      // Remove image functionality
+      removeImageBtn.addEventListener('click', function() {
+        imgInput.value = '';
         imagePreview.classList.add('hidden');
+      });
+
+      if (reportForm) {
+        reportForm.addEventListener('submit', async (event) => {
+          event.preventDefault();
+
+          // Check if user is still logged in
+          const user = localStorage.getItem('user');
+          if (!user) {
+            alert('Sie müssen sich anmelden, um Gegenstände zu melden.');
+            window.location.href = '/login/';
+            return;
+          }
+
+          messageDiv.textContent = '';
+          messageDiv.className = 'p-3 rounded-md text-center';
+          messageDiv.classList.remove('hidden');
+          messageDiv.textContent = 'Übertrage Daten...';
+          messageDiv.classList.add('bg-blue-100', 'text-blue-800');
+
+          // Use FormData to handle file uploads
+          const formData = new FormData(reportForm);
+
+          try {
+            const response = await fetch('/api/items', {
+              method: 'POST',
+              body: formData,
+            });
+
+            console.log('Response status:', response.status);
+            const result = await response.json();
+            console.log('Response result:', result);
+
+            if (response.ok && result.success === 'ok') {
+              messageDiv.textContent = 'Gegenstand erfolgreich gemeldet!';
+              messageDiv.className = 'p-3 rounded-md text-center bg-green-100 text-green-800';
+              reportForm.reset();
+              imagePreview.classList.add('hidden');
+            } else {
+              messageDiv.textContent = 'Fehler beim Melden des Gegenstands: ' + (result.message || 'Unbekannter Fehler');
+              messageDiv.className = 'p-3 rounded-md text-center bg-red-100 text-red-800';
+            }
+          } catch (error) {
+            console.error('Fetch-Fehler:', error);
+            messageDiv.textContent = 'Netzwerkfehler oder Server nicht erreichbar.';
+            messageDiv.className = 'p-3 rounded-md text-center bg-red-100 text-red-800';
+          }
+        });
       }
     });
 
-    // Remove image functionality
-    removeImageBtn.addEventListener('click', function() {
-      imgInput.value = '';
-      imagePreview.classList.add('hidden');
-    });
+    function checkLoginStatus() {
+      const user = localStorage.getItem('user');
+      const loginRequired = document.getElementById('loginRequired');
+      const reportSection = document.getElementById('reportSection');
+      const currentUserEmail = document.getElementById('currentUserEmail');
 
-    if (reportForm) {
-      reportForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-
-        messageDiv.textContent = '';
-        messageDiv.className = 'p-3 rounded-md text-center';
-        messageDiv.classList.remove('hidden');
-        messageDiv.textContent = 'Übertrage Daten...';
-        messageDiv.classList.add('bg-blue-100', 'text-blue-800');
-
-        // Use FormData to handle file uploads
-        const formData = new FormData(reportForm);
-
-        // Convert form data to object for validation
-        const itemData = {};
-        for (const [key, value] of formData.entries()) {
-          if (key !== 'img') { // Handle image separately
-            itemData[key] = value;
-          }
-        }
-
-        // Add computed fields
-        itemData.title = itemData.name;
-        
-        if (itemData.date) {
-          itemData.date = new Date(itemData.date).getTime() / 1000;
-        } else {
-          itemData.date = null;
-        }
-        itemData.reportedAt = Math.floor(Date.now() / 1000);
-        itemData.categoryId = itemData.category; 
-        itemData.locationId = itemData.location; 
-        itemData.userId = 'dummy-user-id-123';
-
-        // Clean up form data object
-        delete itemData.category;
-        delete itemData.location;
-
-        console.log('Sende Daten:', itemData);
-
-        try {
-          const response = await fetch('/api/items', {
-            method: 'POST',
-            body: formData, // Send FormData directly for file upload
-          });
-
-          console.log('Response status:', response.status);
-          const result = await response.json();
-          console.log('Response result:', result);
-
-          if (response.ok && result.success === 'ok') {
-            messageDiv.textContent = 'Gegenstand erfolgreich gemeldet!';
-            messageDiv.className = 'p-3 rounded-md text-center bg-green-100 text-green-800';
-            reportForm.reset();
-            imagePreview.classList.add('hidden');
-          } else {
-            messageDiv.textContent = 'Fehler beim Melden des Gegenstands: ' + (result.message || 'Unbekannter Fehler');
-            messageDiv.className = 'p-3 rounded-md text-center bg-red-100 text-red-800';
-          }
-        } catch (error) {
-          console.error('Fetch-Fehler:', error);
-          messageDiv.textContent = 'Netzwerkfehler oder Server nicht erreichbar.';
-          messageDiv.className = 'p-3 rounded-md text-center bg-red-100 text-red-800';
-        }
-      });
+      if (user) {
+        const userData = JSON.parse(user);
+        loginRequired.classList.add('hidden');
+        reportSection.classList.remove('hidden');
+        currentUserEmail.textContent = userData.email;
+      } else {
+        loginRequired.classList.remove('hidden');
+        reportSection.classList.add('hidden');
+      }
     }
-  });
   </script>
 </Layout>

@@ -14,6 +14,23 @@ export const prerender = false;
 // Da deine initdb.js die Datei im Projekt-Root ablegt, muss dieser Pfad korrekt sein.
 const dbPath = path.resolve("./src/database/database.db"); // Angepasst an deinen initdb.js Pfad
 
+// Helper function to get user from cookie
+function getUserFromCookie(request: Request) {
+  const cookies = request.headers.get('cookie');
+  if (cookies) {
+    const userCookie = cookies.split(';').find(c => c.trim().startsWith('user='));
+    if (userCookie) {
+      try {
+        const userData = userCookie.split('=')[1];
+        return JSON.parse(decodeURIComponent(userData));
+      } catch (error) {
+        console.error('Error parsing user cookie:', error);
+      }
+    }
+  }
+  return null;
+}
+
 export const GET: APIRoute = async () => {
   let db = new sqlite(dbPath);
   let itemsFromDb = await db.prepare('SELECT id, name, img, type, title, date, reportedAt, categoryId, description, locationId, userId FROM Items').all();
@@ -30,6 +47,18 @@ export const GET: APIRoute = async () => {
 
 export const POST: APIRoute = async ({ request }) => {
   try {
+    // Check if user is authenticated
+    const user = getUserFromCookie(request);
+    if (!user) {
+      return new Response(JSON.stringify({
+        success: "error",
+        message: "Authentication required. Please log in to report items."
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     const contentType = request.headers.get('content-type');
     console.log('Content-Type:', contentType);
     
@@ -103,7 +132,7 @@ export const POST: APIRoute = async ({ request }) => {
       item.reportedAt = Math.floor(Date.now() / 1000);
       item.categoryId = item.category; 
       item.locationId = item.location; 
-      item.userId = 'dummy-user-id-123';
+      item.userId = user.id;
       
       // Clean up
       delete item.category;

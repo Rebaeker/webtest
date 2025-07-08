@@ -85,7 +85,7 @@ function initDb() {
   let resultLocations = db.exec(`
   CREATE TABLE IF NOT EXISTS Locations (
     'id' TEXT NOT NULL PRIMARY KEY,
-    'name' TEXT NOT NULL,
+    'name' TEXT NOT NULL UNIQUE,
     'createdAt' INTEGER NOT NULL DEFAULT 0,
     'updatedAt' INTEGER NOT NULL DEFAULT 0)`);
   console.log("Locations Table Result:", resultLocations);

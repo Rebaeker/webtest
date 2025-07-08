@@ -382,7 +382,7 @@ try {
         `;
       }
 
-      function showItemModal(item) {
+      async function showItemModal(item) {
         const categoryName = categories[item.categoryId] || 'Unbekannt';
         const locationName = locations[item.locationId] || 'Unbekannt';
         const date = item.date ? new Date(item.date * 1000).toLocaleDateString('de-DE') : 'Unbekannt';
@@ -391,7 +391,33 @@ try {
         const typeBadgeClass = item.type === 'isLost' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
         
         // Updated image path handling
-        const imageSrc = item.img ? item.img : '/uploads/placeholder.jpg';
+        const imageSrc = item.img ? item.img : '/uploads/placeholder.svg';
+
+        // Get user email from userId
+        let userEmail = `Unbekannt (${item.userId})`;
+        if (item.userId) {
+          try {
+            const url = `/api/userdb?id=${item.userId}`;
+            console.log("About to fetch:", url);
+            const userResponse = await fetch(url);
+            if (userResponse.ok) {
+              console.log("First If Ok")
+              console.log(userResponse)
+              const userData = await userResponse.json();
+              console.log(userData)
+              if (userData.success === 'ok' && userData.user && userData.user.email) {
+                console.log("Second If Ok")
+                userEmail = userData.user.email;
+                console.log(userData)
+              }
+              else {
+                console.log("Second If Not Ok")
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching user data:', error);
+          }
+        }
 
         // Fill modal content
         document.getElementById('modalTitle').textContent = item.title;
@@ -406,7 +432,7 @@ try {
         document.getElementById('modalLocation').textContent = locationName;
         document.getElementById('modalDate').textContent = date;
         document.getElementById('modalDescription').textContent = item.description || 'Keine Beschreibung verfügbar.';
-        document.getElementById('modalReporter').textContent = item.userId || 'Unbekannt';
+        document.getElementById('modalReporter').textContent = userEmail
         document.getElementById('modalReportedAt').textContent = reportedAt;
         
         // Clear contact message
