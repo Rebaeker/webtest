@@ -67,18 +67,6 @@
         }
       });
     }
-
-    // Check if user is trying to access report page without login
-    const reportLink = document.getElementById('reportLink');
-    if (reportLink) {
-      reportLink.addEventListener('click', (e) => {
-        const user = localStorage.getItem('user');
-        if (!user) {
-          e.preventDefault();
-          window.location.href = '/login/';
-        }
-      });
-    }
   });
 
   async function checkAuthStatus() {

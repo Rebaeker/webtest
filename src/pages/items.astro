@@ -1,5 +1,4 @@
 ---
-// filepath: /Users/timehmann/Dokumente/Programmieren/SmallProjects/webtest/src/pages/items.astro
 import Layout from "../layouts/Layout.astro";
 import sqlite from 'better-sqlite3';
 import * as path from 'path';
@@ -195,26 +194,6 @@ try {
                 <p class="text-gray-600">Gemeldet von: <span id="modalReporter" class="font-medium"></span></p>
                 <p class="text-gray-600">Gemeldet am: <span id="modalReportedAt" class="font-medium"></span></p>
               </div>
-
-              <!-- Contact Form -->
-              <div class="border-t pt-4">
-                <h3 class="text-lg font-semibold text-gray-800 mb-3">Nachricht senden</h3>
-                <div class="space-y-3">
-                  <textarea 
-                    id="contactMessage" 
-                    rows="4" 
-                    placeholder="Ihre Nachricht an den Eigentümer..."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  ></textarea>
-                  <button 
-                    id="sendMessage" 
-                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
-                  >
-                    Nachricht senden
-                  </button>
-                  <p class="text-xs text-gray-500">Diese Funktion ist derzeit noch nicht verfügbar.</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -256,11 +235,6 @@ try {
       closeModal.addEventListener('click', closeItemModal);
       itemModal.addEventListener('click', (e) => {
         if (e.target === itemModal) closeItemModal();
-      });
-
-      // Send message button (placeholder)
-      document.getElementById('sendMessage').addEventListener('click', () => {
-        alert('Diese Funktion ist noch nicht implementiert.');
       });
 
       async function loadItems() {
@@ -442,9 +416,6 @@ try {
         document.getElementById('modalDescription').textContent = item.description || 'Keine Beschreibung verfügbar.';
         document.getElementById('modalReporter').textContent = userEmail
         document.getElementById('modalReportedAt').textContent = reportedAt;
-        
-        // Clear contact message
-        document.getElementById('contactMessage').value = '';
 
         // Show modal with blur effect
         itemModal.classList.remove('hidden');

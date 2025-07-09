@@ -11,7 +11,6 @@ const dbPath = path.resolve("./src/database/", 'database.db'); // Angepasst an d
 export const GET: APIRoute = async () => {
   let db = new sqlite(dbPath);
   let locationsFromDb = await db.prepare('SELECT id, name FROM Locations').all();
-  console.log("locationsFromDb", locationsFromDb);
   db.close();
   return new Response(JSON.stringify(
       {
