@@ -30,8 +30,8 @@ function initDb() {
     'phone' TEXT, 
     'email' TEXT NOT NULL UNIQUE,
     'createdAt' INT NOT NULL DEFAULT 0, 
-    'updatedAt' INT NOT NULL DEFAULT 0),
-    'profilePicture' TEXT DEFAULT NULL`);
+    'updatedAt' INT NOT NULL DEFAULT 0,
+    'profilePicture' TEXT DEFAULT NULL)`);
     console.log(resultUser);
     //  Hier wird ie Neue Column username hinzugefügt. 
   //  let addPerson = db.exec("ALTER TABLE Persons ADD COLUMN username TEXT NOT NULL DEFAULT ''");
