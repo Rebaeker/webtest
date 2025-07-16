@@ -31,18 +31,32 @@ function getUserFromCookie(request: Request) {
   return null;
 }
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ url }) => {
   let db = new sqlite(dbPath);
-  let itemsFromDb = await db.prepare('SELECT id, name, img, type, title, date, reportedAt, categoryId, description, locationId, userId FROM Items ORDER BY rowid DESC').all();
+  
+  // Get query parameters
+  const userId = url.searchParams.get('userId');
+  
+  let query = 'SELECT id, name, img, type, title, date, reportedAt, categoryId, description, locationId, userId FROM Items';
+  let params = [];
+  
+  if (userId) {
+    query += ' WHERE userId = ?';
+    params.push(userId);
+  }
+  
+  query += ' ORDER BY rowid DESC';
+  
+  let itemsFromDb = await db.prepare(query).all(...params);
   db.close();
-  return new Response(JSON.stringify(
-      {
-        items: itemsFromDb,
-        success: "ok",
-        message: ""
-      }), {
-        status: 200,
-      });
+  
+  return new Response(JSON.stringify({
+    items: itemsFromDb,
+    success: "ok",
+    message: ""
+  }), {
+    status: 200,
+  });
 };
 
 export const POST: APIRoute = async ({ request }) => {

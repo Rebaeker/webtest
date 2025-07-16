@@ -31,7 +31,7 @@ export const GET: APIRoute = async ({ request }) => {
     if (id) {
       const user = db
         .prepare(
-          'SELECT id, prename, surname, username, phone, email FROM Users WHERE id = ?'
+          'SELECT id, prename, surname, username, phone, email, profilePicture FROM Users WHERE id = ?'
         )
         .get(id);
 
@@ -60,7 +60,7 @@ export const GET: APIRoute = async ({ request }) => {
     // Blueprint‑Funktionalität: alle Datensätze abrufen
     const usersFromDb = db
       .prepare(
-        'SELECT id, prename, surname, username, phone, email FROM Users'
+        'SELECT id, prename, surname, username, phone, email, profilePicture FROM Users'
       )
       .all();
     db.close();
