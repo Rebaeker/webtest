@@ -41,6 +41,9 @@ export default function ItemsPage() {
   const [showModal, setShowModal] = createSignal(false);
   const [selectedItem, setSelectedItem] = createSignal<Item | null>(null);
   const [selectedItemUser, setSelectedItemUser] = createSignal<User | null>(null);
+  
+  // Track failed image loads to prevent infinite loops
+  const [failedImages, setFailedImages] = createSignal<Set<string>>(new Set());
 
   // Filter signals
   const [searchTerm, setSearchTerm] = createSignal('');
@@ -205,13 +208,37 @@ export default function ItemsPage() {
     setSelectedType('');
   };
 
+  // Handle image load errors - prevent infinite loops
+  const handleImageError = (e: Event, originalSrc: string) => {
+    const img = e.target as HTMLImageElement;
+    const failed = failedImages();
+    
+    // If this image hasn't failed before and it's not already the placeholder
+    if (!failed.has(originalSrc) && img.src !== '/uploads/placeholder.svg') {
+      // Mark this image as failed
+      setFailedImages(new Set([...failed, originalSrc]));
+      // Set to placeholder
+      img.src = '/uploads/placeholder.svg';
+    }
+  };
+
+  // Get the appropriate image source, checking if it has failed before
+  const getImageSrc = (item: Item) => {
+    const failed = failedImages();
+    // If the image has failed before or there's no image, use placeholder
+    if (!item.img || failed.has(item.img)) {
+      return '/uploads/placeholder.svg';
+    }
+    return item.img;
+  };
+
   const createItemCard = (item: Item) => {
     const categoryName = categories()[item.categoryId] || 'Unbekannt';
     const locationName = locations()[item.locationId] || 'Unbekannt';
     const date = item.date ? new Date(item.date * 1000).toLocaleDateString('de-DE') : 'Unbekannt';
     const typeLabel = item.type === 'isLost' ? 'Verloren' : 'Gefunden';
     const typeBadgeClass = item.type === 'isLost' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
-    const imageSrc = item.img || '/uploads/placeholder.jpg';
+    const imageSrc = getImageSrc(item);
 
     return (
       <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition duration-300">
@@ -220,9 +247,7 @@ export default function ItemsPage() {
             src={imageSrc} 
             alt={item.title} 
             class="w-full h-full object-contain"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '/uploads/placeholder.jpg';
-            }}
+            onError={(e) => handleImageError(e, item.img || '')}
           />
         </div>
         
@@ -423,9 +448,10 @@ export default function ItemsPage() {
                   <div class="space-y-4">
                     <div class="w-full h-80 bg-gray-100 rounded-lg overflow-hidden">
                       <img 
-                        src={selectedItem()?.img || '/uploads/placeholder.svg'} 
+                        src={getImageSrc(selectedItem()!)} 
                         alt={selectedItem()?.title || ''} 
                         class="w-full h-full object-contain rounded-lg shadow-md"
+                        onError={(e) => handleImageError(e, selectedItem()?.img || '')}
                       />
                     </div>
                     
