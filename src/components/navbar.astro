@@ -1,10 +1,8 @@
- <!-- Navbar für SPA -->
+<!-- Navbar für SPA -->
  <nav class="bg-white w-full relative z-10">
     <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
   
-    <!-- Logo links - JETZT ALS LINK ZUR STARTSEITE -->
-      <!-- Das <a>-Tag um das div macht den gesamten Bereich klickbar -->
-      <!-- href="/" leitet zur Homepage (src/pages/index.astro) -->
+    <!-- Logo links, verlinkt zur Startseite -->
       <a href="/" class="text-xl font-bold text-blue-600 hover:text-blue-700">
         Lost and Found
       </a>
@@ -21,22 +19,22 @@
       <div class="hidden peer-checked:flex absolute top-full left-0 w-full flex-col gap-4 bg-white px-4 py-4
                   md:flex md:static md:flex-row md:items-center md:gap-6 md:ml-auto md:w-auto">
   
-        <!-- Navigation rechts -->
+        <!-- Navigation zu den Unterseiten -->
         <ul class="flex flex-col md:flex-row md:gap-6 md:items-center md:ml-auto">
-          <li><a href="/items/" class="text-xl text-gray-700 hover:text-blue-600">Items</a></li>
-          <li><a href="/report/" class="text-xl text-gray-700 hover:text-blue-600" id="reportLink">Report</a></li>
-          <li><a href="/aboutus/" class="text-xl text-gray-700 hover:text-blue-600">About Us</a></li>
+          <li><a href="/items/" class="text-xl text-gray-700 hover:text-blue-600">Gegenstände</a></li>
+          <li><a href="/report/" class="text-xl text-gray-700 hover:text-blue-600" id="reportLink">Meldeformular</a></li>
+          <li><a href="/aboutus/" class="text-xl text-gray-700 hover:text-blue-600">Über uns</a></li>
         </ul>
   
         <!-- User Info / Login Button -->
         <div id="authSection" class="md:ml-6">
-          <!-- Login Button (shown when not logged in) -->
+          <!-- Login Button, wird angezeigt wenn nicht eingeloogt -->
           <a href="/login/" id="loginButton"
             class="text-xl border border-blue-600 text-blue-600 rounded px-4 py-2 hover:bg-blue-600 hover:text-white transition">
             Login
           </a>
           
-          <!-- User Info (shown when logged in) -->
+          <!-- User Info, wird angezeigt wenn eingeloggt-->
           <div id="userInfo" class="hidden items-center space-x-4">
             <a href="/profile/" id="profileLink" class="text-gray-700 hover:text-blue-600 transition-colors duration-200" title="Profil anzeigen">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -57,7 +55,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     checkAuthStatus();
     
-    // Logout functionality
+    // Logout
     const logoutButton = document.getElementById('logoutButton');
     if (logoutButton) {
       logoutButton.addEventListener('click', async () => {
