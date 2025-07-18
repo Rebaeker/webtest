@@ -531,54 +531,50 @@ export default function ProfilePage() {
         </div>
       ) : (
         <div>
-          {/* Enhanced Profile Header */}
+          {/* Profile Header */}
           <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-8">
-                {/* Larger Profile Picture */}
-                <div class="flex-shrink-0">
-                  <div class="relative">
-                    <img 
-                      src={user()?.profilePicture || "/uploads/default-avatar.svg"} 
-                      alt="Profilbild" 
-                      class="w-40 h-40 rounded-full object-cover border-4 border-blue-200"
-                    />
-                    <button 
-                      onClick={() => profilePictureInput.click()}
-                      class="absolute bottom-2 right-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg transition"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </button>
-                  </div>
-                  <input 
-                    type="file" 
-                    ref={profilePictureInput!} 
-                    accept="image/*" 
-                    class="hidden"
-                    onChange={handleProfilePictureChange}
+            <div class="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-8">
+              {/* Profile Picture */}
+              <div class="flex-shrink-0">
+                <div class="relative">
+                  <img 
+                    src={user()?.profilePicture || "/uploads/default-avatar.svg"} 
+                    alt="Profilbild" 
+                    class="w-40 h-40 rounded-full object-cover border-4 border-blue-200"
                   />
+                  <button 
+                    onClick={() => profilePictureInput.click()}
+                    class="absolute bottom-2 right-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg transition"
+                  >
+                    <span class="material-symbols-outlined">edit</span>
+                  </button>
                 </div>
+                <input 
+                  type="file" 
+                  ref={profilePictureInput!} 
+                  accept="image/*" 
+                  class="hidden"
+                  onChange={handleProfilePictureChange}
+                />
+              </div>
 
-                {/* Profile Info with Icons */}
-                <div class="flex-grow">
-                  <h1 class="text-4xl font-bold text-gray-800 mb-4">
-                    {user()?.prename} {user()?.surname}
-                  </h1>
-                  <div class="space-y-2">
-                    <div class="flex items-center text-gray-600">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                      </svg>
-                      <span class="text-lg">{user()?.email}</span>
-                    </div>
-                    <div class="flex items-center text-gray-600">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                      <span class="text-lg">{user()?.phone || 'Nicht angegeben'}</span>
-                    </div>
+              {/* Profile Info with Icons */}
+              <div class="flex-grow">
+                <h1 class="text-4xl font-bold text-gray-800 mb-4">
+                  {user()?.prename} {user()?.surname}
+                </h1>
+                <div class="space-y-2">
+                  <div class="flex items-center text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                    </svg>
+                    <span class="text-lg">{user()?.email}</span>
+                  </div>
+                  <div class="flex items-center text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <span class="text-lg">{user()?.phone || 'Nicht angegeben'}</span>
                   </div>
                 </div>
               </div>
@@ -588,9 +584,7 @@ export default function ProfilePage() {
                 onClick={openEditModal}
                 class="flex items-center space-x-2 bg-white hover:bg-gray-50 text-blue-600 font-semibold py-3 px-6 border-2 border-blue-600 rounded-lg transition duration-300"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
+                <span class="material-symbols-outlined">edit</span>
                 <span>Profil bearbeiten</span>
               </button>
             </div>
@@ -603,7 +597,7 @@ export default function ProfilePage() {
             {listingsLoading() ? (
               <div class="text-center py-8">
                 <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p class="mt-2 text-gray-600">Lade Ihre Meldungen...</p>
+                <p class="mt-2 text-gray-600">Lade Meldungen...</p>
               </div>
             ) : userListings().length === 0 ? (
               <div class="text-center py-12">
