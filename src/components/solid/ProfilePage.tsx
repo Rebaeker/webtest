@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount } from 'solid-js';
+import { createSignal, createEffect, onMount, For } from 'solid-js';
 
 interface User {
   id: string;
@@ -12,12 +12,24 @@ interface User {
 interface Item {
   id: string;
   title: string;
+  description?: string;
   type: 'isLost' | 'isFound';
   categoryId: string;
   locationId: string;
   date: number;
   img?: string;
   userId: string;
+  reportedAt: number;
+}
+
+interface Category {
+  id: string;
+  name: string;
+}
+
+interface Location {
+  id: string;
+  name: string;
 }
 
 export default function ProfilePage() {
@@ -26,18 +38,34 @@ export default function ProfilePage() {
   const [userListings, setUserListings] = createSignal<Item[]>([]);
   const [categories, setCategories] = createSignal<Record<string, string>>({});
   const [locations, setLocations] = createSignal<Record<string, string>>({});
+  const [categoriesList, setCategoriesList] = createSignal<Category[]>([]);
+  const [locationsList, setLocationsList] = createSignal<Location[]>([]);
   const [showEditModal, setShowEditModal] = createSignal(false);
+  const [showItemEditModal, setShowItemEditModal] = createSignal(false);
+  const [selectedItem, setSelectedItem] = createSignal<Item | null>(null);
   const [loading, setLoading] = createSignal(false);
   const [listingsLoading, setListingsLoading] = createSignal(true);
   const [editMessage, setEditMessage] = createSignal('');
   const [editMessageType, setEditMessageType] = createSignal<'success' | 'error'>('success');
+  const [failedImages, setFailedImages] = createSignal<Set<string>>(new Set());
 
   // Form signals
   const [editPrename, setEditPrename] = createSignal('');
   const [editSurname, setEditSurname] = createSignal('');
   const [editPhone, setEditPhone] = createSignal('');
 
+  // Item edit form signals
+  const [editItemTitle, setEditItemTitle] = createSignal('');
+  const [editItemDescription, setEditItemDescription] = createSignal('');
+  const [editItemType, setEditItemType] = createSignal<'isLost' | 'isFound'>('isLost');
+  const [editItemCategory, setEditItemCategory] = createSignal('');
+  const [editItemLocation, setEditItemLocation] = createSignal('');
+  const [editItemDate, setEditItemDate] = createSignal('');
+  const [editItemImage, setEditItemImage] = createSignal<File | null>(null);
+  const [editItemImagePreview, setEditItemImagePreview] = createSignal('');
+
   let profilePictureInput: HTMLInputElement;
+  let itemImageInput: HTMLInputElement;
 
   onMount(() => {
     checkLoginStatus();
@@ -64,7 +92,6 @@ export default function ProfilePage() {
       
       if (result.success === 'ok' && result.user) {
         setUser(result.user);
-        // Update form fields
         setEditPrename(result.user.prename || '');
         setEditSurname(result.user.surname || '');
         setEditPhone(result.user.phone || '');
@@ -103,10 +130,11 @@ export default function ProfilePage() {
       
       if (result.success === 'ok') {
         const cats: Record<string, string> = {};
-        result.categories.forEach((cat: any) => {
+        result.categories.forEach((cat: Category) => {
           cats[cat.id] = cat.name;
         });
         setCategories(cats);
+        setCategoriesList(result.categories);
       }
     } catch (error) {
       console.error('Error loading categories:', error);
@@ -120,10 +148,11 @@ export default function ProfilePage() {
       
       if (result.success === 'ok') {
         const locs: Record<string, string> = {};
-        result.locations.forEach((loc: any) => {
+        result.locations.forEach((loc: Location) => {
           locs[loc.id] = loc.name;
         });
         setLocations(locs);
+        setLocationsList(result.locations);
       }
     } catch (error) {
       console.error('Error loading locations:', error);
@@ -158,10 +187,8 @@ export default function ProfilePage() {
       const result = await response.json();
 
       if (result.success === 'ok') {
-        // Update user state
         setUser(prev => prev ? { ...prev, profilePicture: result.profilePictureUrl } : null);
         
-        // Update localStorage
         const currentUser = user();
         if (currentUser) {
           const updatedUser = { ...currentUser, profilePicture: result.profilePictureUrl };
@@ -218,7 +245,6 @@ export default function ProfilePage() {
         setEditMessage('Profil erfolgreich aktualisiert!');
         setEditMessageType('success');
 
-        // Update user state
         setUser(prev => prev ? {
           ...prev,
           prename: data.prename,
@@ -226,7 +252,6 @@ export default function ProfilePage() {
           phone: data.phone
         } : null);
 
-        // Update localStorage
         const currentUser = user();
         if (currentUser) {
           const updatedUser = {
@@ -254,13 +279,208 @@ export default function ProfilePage() {
     }
   };
 
+  // Handle image load errors
+  const handleImageError = (e: Event, originalSrc: string) => {
+    const img = e.target as HTMLImageElement;
+    const failed = failedImages();
+    
+    if (!failed.has(originalSrc) && img.src !== '/uploads/placeholder.svg') {
+      setFailedImages(new Set([...failed, originalSrc]));
+      img.src = '/uploads/placeholder.svg';
+    }
+  };
+
+  const getImageSrc = (item: Item) => {
+    const failed = failedImages();
+    if (!item.img || failed.has(item.img)) {
+      return '/uploads/placeholder.svg';
+    }
+    return item.img;
+  };
+
+  const openItemEditModal = (item: Item) => {
+    setSelectedItem(item);
+    setEditItemTitle(item.title);
+    setEditItemDescription(item.description || '');
+    setEditItemType(item.type);
+    setEditItemCategory(item.categoryId);
+    setEditItemLocation(item.locationId);
+    setEditItemDate(item.date ? new Date(item.date * 1000).toISOString().split('T')[0] : '');
+    setEditItemImage(null);
+    setEditItemImagePreview('');
+    setShowItemEditModal(true);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeItemEditModal = () => {
+    setShowItemEditModal(false);
+    setSelectedItem(null);
+    setEditItemImage(null);
+    setEditItemImagePreview('');
+    if (itemImageInput) {
+      itemImageInput.value = '';
+    }
+    document.body.style.overflow = 'auto';
+  };
+
+  const handleItemImageChange = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Datei ist zu groß. Maximale Größe: 5MB');
+        target.value = '';
+        return;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        alert('Bitte wählen Sie eine gültige Bilddatei.');
+        target.value = '';
+        return;
+      }
+
+      setEditItemImage(file);
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setEditItemImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setEditItemImage(null);
+      setEditItemImagePreview('');
+    }
+  };
+
+  const removeItemImage = () => {
+    setEditItemImage(null);
+    setEditItemImagePreview('');
+    if (itemImageInput) {
+      itemImageInput.value = '';
+    }
+  };
+
+    const handleItemUpdate = async (event: Event) => {
+    event.preventDefault();
+    setLoading(true);
+
+    const currentItem = selectedItem();
+    if (!currentItem) return;
+
+    try {
+      let response;
+      
+      if (editItemImage()) {
+        // Use FormData for image updates
+        const formData = new FormData();
+        formData.append('id', currentItem.id);
+        formData.append('name', editItemTitle());
+        formData.append('title', editItemTitle());
+        formData.append('description', editItemDescription());
+        formData.append('type', editItemType());
+        formData.append('categoryId', editItemCategory());
+        formData.append('locationId', editItemLocation());
+        formData.append('date', editItemDate() ? new Date(editItemDate()).toISOString() : '');
+        formData.append('userId', currentItem.userId);
+        formData.append('reportedAt', currentItem.reportedAt.toString());
+        formData.append('img', editItemImage()!);
+
+        response = await fetch('/api/items', {
+          method: 'PUT',
+          body: formData
+        });
+      } else {
+        // Update without image changes - use JSON
+        const updateData = {
+          id: currentItem.id,
+          name: editItemTitle(),
+          title: editItemTitle(),
+          description: editItemDescription(),
+          type: editItemType(),
+          categoryId: editItemCategory(),
+          locationId: editItemLocation(),
+          date: editItemDate() ? new Date(editItemDate()).getTime() / 1000 : currentItem.date,
+          img: currentItem.img, // Keep existing image
+          userId: currentItem.userId,
+          reportedAt: currentItem.reportedAt
+        };
+
+        response = await fetch('/api/items', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateData)
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success === 'ok') {
+        await loadUserListings();
+        closeItemEditModal();
+        setEditMessage('Gegenstand erfolgreich aktualisiert!');
+        setEditMessageType('success');
+      } else {
+        setEditMessage('Fehler beim Aktualisieren des Gegenstands: ' + result.message);
+        setEditMessageType('error');
+      }
+    } catch (error) {
+      console.error('Error updating item:', error);
+      setEditMessage('Fehler beim Aktualisieren des Gegenstands: ' + error.message);
+      setEditMessageType('error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleItemDelete = async () => {
+    if (!confirm('Sind Sie sicher, dass Sie diesen Gegenstand löschen möchten?')) {
+      return;
+    }
+
+    const itemId = selectedItem()?.id;
+    if (!itemId) {
+      alert('Fehler: Gegenstand ID nicht gefunden.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/items?id=${itemId}`, {
+        method: 'DELETE'
+      });
+
+      const result = await response.json();
+
+      if (result.success === 'ok' || (result.itemObject && result.itemObject.success === 'ok')) {
+        // Remove the item from the list
+        setUserListings(prev => prev.filter(item => item.id !== itemId));
+        closeItemEditModal();
+      } else {
+        alert('Fehler beim Löschen des Gegenstands: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      alert('Fehler beim Löschen des Gegenstands.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const createItemCard = (item: Item) => {
     const categoryName = categories()[item.categoryId] || 'Unbekannt';
     const locationName = locations()[item.locationId] || 'Unbekannt';
     const date = item.date ? new Date(item.date * 1000).toLocaleDateString('de-DE') : 'Unbekannt';
     const typeLabel = item.type === 'isLost' ? 'Verloren' : 'Gefunden';
     const typeBadgeClass = item.type === 'isLost' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
-    const imageSrc = item.img || '/uploads/placeholder.svg';
+    const imageSrc = getImageSrc(item);
 
     return (
       <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition duration-300">
@@ -269,9 +489,7 @@ export default function ProfilePage() {
             src={imageSrc} 
             alt={item.title} 
             class="w-full h-full object-contain"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '/uploads/placeholder.svg';
-            }}
+            onError={(e) => handleImageError(e, item.img || '')}
           />
         </div>
         
@@ -288,12 +506,12 @@ export default function ProfilePage() {
             <p><strong>Datum:</strong> {date}</p>
           </div>
           
-          <a 
-            href={`/items/${item.id}`} 
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-300 inline-block text-center"
+          <button 
+            onClick={() => openItemEditModal(item)}
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-300"
           >
-            Details anzeigen
-          </a>
+            Bearbeiten
+          </button>
         </div>
       </div>
     );
@@ -313,50 +531,68 @@ export default function ProfilePage() {
         </div>
       ) : (
         <div>
-          {/* Profile Header */}
+          {/* Enhanced Profile Header */}
           <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
-            <div class="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-8">
-              {/* Profile Picture */}
-              <div class="flex-shrink-0">
-                <div class="relative">
-                  <img 
-                    src={user()?.profilePicture || "/uploads/default-avatar.svg"} 
-                    alt="Profilbild" 
-                    class="w-32 h-32 rounded-full object-cover border-4 border-blue-200"
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-8">
+                {/* Larger Profile Picture */}
+                <div class="flex-shrink-0">
+                  <div class="relative">
+                    <img 
+                      src={user()?.profilePicture || "/uploads/default-avatar.svg"} 
+                      alt="Profilbild" 
+                      class="w-40 h-40 rounded-full object-cover border-4 border-blue-200"
+                    />
+                    <button 
+                      onClick={() => profilePictureInput.click()}
+                      class="absolute bottom-2 right-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg transition"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                  </div>
+                  <input 
+                    type="file" 
+                    ref={profilePictureInput!} 
+                    accept="image/*" 
+                    class="hidden"
+                    onChange={handleProfilePictureChange}
                   />
-                  <button 
-                    onClick={() => profilePictureInput.click()}
-                    class="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 shadow-lg transition"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
                 </div>
-                <input 
-                  type="file" 
-                  ref={profilePictureInput!} 
-                  accept="image/*" 
-                  class="hidden"
-                  onChange={handleProfilePictureChange}
-                />
+
+                {/* Profile Info with Icons */}
+                <div class="flex-grow">
+                  <h1 class="text-4xl font-bold text-gray-800 mb-4">
+                    {user()?.prename} {user()?.surname}
+                  </h1>
+                  <div class="space-y-2">
+                    <div class="flex items-center text-gray-600">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                      </svg>
+                      <span class="text-lg">{user()?.email}</span>
+                    </div>
+                    <div class="flex items-center text-gray-600">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      <span class="text-lg">{user()?.phone || 'Nicht angegeben'}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Profile Info */}
-              <div class="flex-grow text-center md:text-left">
-                <h1 class="text-3xl font-bold text-gray-800 mb-2">
-                  {user()?.prename} {user()?.surname}
-                </h1>
-                <p class="text-gray-600 mb-2">{user()?.email}</p>
-                <p class="text-gray-600 mb-4">{user()?.phone || 'Nicht angegeben'}</p>
-                
-                <button 
-                  onClick={openEditModal}
-                  class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300"
-                >
-                  Profil bearbeiten
-                </button>
-              </div>
+              {/* Edit Profile Button */}
+              <button 
+                onClick={openEditModal}
+                class="flex items-center space-x-2 bg-white hover:bg-gray-50 text-blue-600 font-semibold py-3 px-6 border-2 border-blue-600 rounded-lg transition duration-300"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                <span>Profil bearbeiten</span>
+              </button>
             </div>
           </div>
 
@@ -388,7 +624,7 @@ export default function ProfilePage() {
           {/* Edit Profile Modal */}
           {showEditModal() && (
             <div class="fixed inset-0 z-50">
-              <div class="absolute inset-0 backdrop-blur-sm bg-transparent"></div>
+              <div class="absolute inset-0 backdrop-blur-sm bg-black bg-opacity-30"></div>
               
               <div class="relative flex items-center justify-center min-h-screen p-4">
                 <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
@@ -476,6 +712,189 @@ export default function ProfilePage() {
               </div>
             </div>
           )}
+
+          {/* Item Edit Modal */}
+          {showItemEditModal() && selectedItem() && (
+            <div class="fixed inset-0 z-50">
+              <div class="absolute inset-0 backdrop-blur-sm bg-black bg-opacity-30"></div>
+              
+              <div class="relative flex items-center justify-center min-h-screen p-4">
+                <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-90vh overflow-y-auto">
+                  <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                      <h3 class="text-xl font-bold text-gray-800">Gegenstand bearbeiten</h3>
+                      <button 
+                        onClick={closeItemEditModal}
+                        class="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleItemUpdate} class="space-y-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Typ</label>
+                        <div class="flex space-x-4">
+                          <label class="inline-flex items-center">
+                            <input 
+                              type="radio" 
+                              value="isLost" 
+                              checked={editItemType() === 'isLost'}
+                              onChange={(e) => setEditItemType(e.currentTarget.value as 'isLost')}
+                              class="form-radio text-blue-600"
+                            />
+                            <span class="ml-2">Verloren</span>
+                          </label>
+                          <label class="inline-flex items-center">
+                            <input 
+                              type="radio" 
+                              value="isFound" 
+                              checked={editItemType() === 'isFound'}
+                              onChange={(e) => setEditItemType(e.currentTarget.value as 'isFound')}
+                              class="form-radio text-blue-600"
+                            />
+                            <span class="ml-2">Gefunden</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Titel</label>
+                        <input 
+                          type="text" 
+                          value={editItemTitle()}
+                          onInput={(e) => setEditItemTitle(e.currentTarget.value)}
+                          required 
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
+                        <select 
+                          value={editItemCategory()}
+                          onChange={(e) => setEditItemCategory(e.currentTarget.value)}
+                          required 
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">Wählen Sie eine Kategorie</option>
+                          <For each={categoriesList()}>
+                            {(category) => (
+                              <option value={category.id}>{category.name}</option>
+                            )}
+                          </For>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ort</label>
+                        <select 
+                          value={editItemLocation()}
+                          onChange={(e) => setEditItemLocation(e.currentTarget.value)}
+                          required 
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">Wählen Sie einen Ort</option>
+                          <For each={locationsList()}>
+                            {(location) => (
+                              <option value={location.id}>{location.name}</option>
+                            )}
+                          </For>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
+                        <textarea 
+                          value={editItemDescription()}
+                          onInput={(e) => setEditItemDescription(e.currentTarget.value)}
+                          rows="3"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Datum</label>
+                        <input 
+                          type="date" 
+                          value={editItemDate()}
+                          onInput={(e) => setEditItemDate(e.currentTarget.value)}
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Aktuelles Bild</label>
+                        <div class="space-y-4">
+                          {selectedItem()?.img && (
+                            <div class="text-sm text-gray-600">
+                              <img 
+                                src={getImageSrc(selectedItem()!)} 
+                                alt="Aktuelles Bild" 
+                                class="max-w-xs max-h-32 rounded-lg shadow-md object-contain"
+                              />
+                            </div>
+                          )}
+                          
+                          <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Neues Bild (optional)</label>
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              onChange={handleItemImageChange}
+                              ref={itemImageInput!}
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            />
+                            {editItemImagePreview() && (
+                              <div class="mt-2 relative">
+                                <img 
+                                  src={editItemImagePreview()} 
+                                  alt="Vorschau" 
+                                  class="max-w-xs max-h-32 rounded-lg shadow-md object-contain"
+                                />
+                                <button 
+                                  type="button" 
+                                  onClick={removeItemImage}
+                                  class="absolute top-1 right-1 bg-red-500 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="flex space-x-4">
+                        <button 
+                          type="button" 
+                          onClick={closeItemEditModal}
+                          class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+                        >
+                          Abbrechen
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={handleItemDelete}
+                          disabled={loading()}
+                          class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50"
+                        >
+                          Löschen
+                        </button>
+                        <button 
+                          type="submit" 
+                          disabled={loading()}
+                          class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50"
+                        >
+                          {loading() ? 'Speichern...' : 'Speichern'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
       
@@ -486,6 +905,10 @@ export default function ProfilePage() {
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+          }
+          
+          .max-h-90vh {
+            max-height: 90vh;
           }
         `}
       </style>

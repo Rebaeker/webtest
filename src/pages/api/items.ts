@@ -244,15 +244,133 @@ export const POST: APIRoute = async ({ request }) => {
 };
 
 export const PUT: APIRoute = async ({ request }) => {
-  let item = await request.json();
-  // Prüfe, ob alle notwendigen Felder (inkl. id zum Updaten) vorhanden sind
-  if (item.hasOwnProperty("id") && item.hasOwnProperty("name") && item.hasOwnProperty("type") && item.hasOwnProperty("title") && item.hasOwnProperty("reportedAt") && item.hasOwnProperty("categoryId") && item.hasOwnProperty("locationId") && item.hasOwnProperty("userId")) {
+  try {
+    // Check if user is authenticated
+    const user = getUserFromCookie(request);
+    if (!user) {
+      return new Response(JSON.stringify({
+        success: "error",
+        message: "Authentication required. Please log in to update items."
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const contentType = request.headers.get('content-type');
+    console.log('PUT Content-Type:', contentType);
+    
+    let item;
+    let imagePath = null;
+    
+    if (contentType?.includes('multipart/form-data')) {
+      // Handle FormData (with file upload)
+      const formData = await request.formData();
+      
+      // Convert FormData to object
+      item = {};
+      for (const [key, value] of formData.entries()) {
+        if (key !== 'img') {
+          item[key] = value;
+        }
+      }
+      
+      // Handle file upload
+      const imageFile = formData.get('img') as File;
+      if (imageFile && imageFile.size > 0) {
+        // Validate file type
+        if (!imageFile.type.startsWith('image/')) {
+          return new Response(JSON.stringify({
+            success: "error",
+            message: "File must be an image"
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Validate file size (5MB limit)
+        if (imageFile.size > 5 * 1024 * 1024) {
+          return new Response(JSON.stringify({
+            success: "error",
+            message: "File size must be less than 5MB"
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Create uploads directory if it doesn't exist
+        const uploadsDir = path.resolve('./public/uploads');
+        if (!existsSync(uploadsDir)) {
+          await mkdir(uploadsDir, { recursive: true });
+        }
+
+        // Generate unique filename
+        const fileExtension = path.extname(imageFile.name);
+        const fileName = `${uuidv4()}${fileExtension}`;
+        const filePath = path.join(uploadsDir, fileName);
+
+        // Save file
+        const arrayBuffer = await imageFile.arrayBuffer();
+        const buffer = new Uint8Array(arrayBuffer);
+        await writeFile(filePath, buffer);
+
+        // Store relative path for database
+        imagePath = `/uploads/${fileName}`;
+      }
+      
+      // Convert date if provided
+      if (item.date) {
+        item.date = new Date(item.date).getTime() / 1000;
+      }
+      
+      // Convert categoryId and locationId if they're still named differently
+      if (item.category) {
+        item.categoryId = item.category;
+        delete item.category;
+      }
+      if (item.location) {
+        item.locationId = item.location;
+        delete item.location;
+      }
+      
+    } else {
+      // Handle JSON (backward compatibility)
+      const bodyText = await request.text();
+      if (!bodyText || bodyText.trim() === '') {
+        return new Response(JSON.stringify({
+          success: "error",
+          message: "Request body is empty"
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      try {
+        item = JSON.parse(bodyText);
+      } catch (parseError) {
+        return new Response(JSON.stringify({
+          success: "error",
+          message: "Invalid JSON in request body"
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    console.log('Parsed item for update:', item);
+    
+    // Validate required fields
+    if (item.hasOwnProperty("id") && item.hasOwnProperty("name") && item.hasOwnProperty("type") && item.hasOwnProperty("title") && item.hasOwnProperty("reportedAt") && item.hasOwnProperty("categoryId") && item.hasOwnProperty("locationId") && item.hasOwnProperty("userId")) {
       let now = dayjs().unix();
       let db = new sqlite(dbPath);
       const updates = db.prepare('UPDATE Items SET name = ?, img = ?, type = ?, title = ?, date = ?, reportedAt = ?, categoryId = ?, description = ?, locationId = ?, userId = ?, updatedAt = ? WHERE id = ?')
                      .run(
                         item.name,
-                        item.img || null,
+                        imagePath || item.img || null, // Use new image path if uploaded, otherwise keep existing
                         item.type,
                         item.title,
                         item.date || null,
@@ -270,17 +388,39 @@ export const PUT: APIRoute = async ({ request }) => {
           success: "ok",
           message: "item updated"
         }),{
-          status : 200
+          status : 200,
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
     } else {
       return new Response(
         JSON.stringify({
             success: "error",
-            message: "attributes missing (id, name, type, title, reportedAt, categoryId, locationId, userId required)"
+            message: "attributes missing (id, name, type, title, reportedAt, categoryId, locationId, userId required)",
+            received: Object.keys(item)
         }),{
-          status : 400
+          status : 400,
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
     }
+  } catch (error) {
+    console.error('PUT /api/items error:', error);
+    return new Response(
+      JSON.stringify({
+        success: "error",
+        message: "Internal server error: " + error.message
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  }
 };
 
 export const DELETE: APIRoute = async ({ request }) => {
